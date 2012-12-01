@@ -1,5 +1,5 @@
-#!/Library/Frameworks/Python.framework/Versions/2.7/bin/python
-import argparse
+#!/usr/local/bin/python
+import optparse
 import os
 import re
 import subprocess
@@ -45,6 +45,13 @@ class BlameCounter(object):
 
 	def git_blame_files(self, filenames):
 		for filename in filenames:
+			if subprocess.call(
+				['git ls-files %s --error-unmatch' % filename],
+				shell=True,
+				stdout=subprocess.PIPE,
+				stderr=subprocess.PIPE,
+			):
+				continue
 			yield subprocess.Popen(
 				['git', 'blame', filename],
 				stdout=subprocess.PIPE
@@ -56,8 +63,8 @@ class BlameCounter(object):
 		):
 			if file_count % chunk_size == 0:
 				self.print_results(
-					max_committers=30,
-					min_blame_lines=400
+					max_committers=50,
+					min_blame_lines=None
 				)
 			self._count_blame_lines(blame_output)
 
@@ -90,13 +97,13 @@ class BlameCounter(object):
 
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser()
-	parser.add_argument(
+	parser = optparse.OptionParser()
+	parser.add_option(
 		'--search-re',
 		dest='search_re',
 		help='A regular expression to use when inspecting filepaths'
 	)
-	parser.add_argument(
+	parser.add_option(
 		'-x',
 		action='append',
 		dest='file_extensions',
@@ -104,14 +111,14 @@ if __name__ == '__main__':
 			  'Can be used multiple times.'
 		)
 	)
-	parser.add_argument(
+	parser.add_option(
 		'--chunk-size',
 		dest='chunk_size',
 		type=int,
 		help='Print the rankings at intervals of CHUNK_SIZE files.'
 	)
 
-	namespace = parser.parse_args()
+	(namespace, _) = parser.parse_args()
 
 	blame_counter_build_kwargs = {}
 	if namespace.file_extensions:
