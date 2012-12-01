@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#!/Library/Frameworks/Python.framework/Versions/2.7/bin/python
 import argparse
 import os
 import re
