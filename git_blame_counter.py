@@ -91,9 +91,25 @@ class BlameCounter(object):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--search-re', dest='search_re')
-	parser.add_argument('-x', action='append', dest='file_extensions')
-	parser.add_argument('--chunk-size', dest='chunk_size', type=int)
+	parser.add_argument(
+		'--search-re',
+		dest='search_re',
+		help='A regular expression to use when inspecting filepaths'
+	)
+	parser.add_argument(
+		'-x',
+		action='append',
+		dest='file_extensions',
+		help=('Search for filenames with the given file extension. '
+			  'Can be used multiple times.'
+		)
+	)
+	parser.add_argument(
+		'--chunk-size',
+		dest='chunk_size',
+		type=int,
+		help='Print the rankings at intervals of CHUNK_SIZE files.'
+	)
 
 	namespace = parser.parse_args()
 
