@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
+import argparse
 import os
 import re
 import subprocess
+
+
+def build_file_extension_re(file_extensions):
+	return '.*\.(?:' + '|'.join(file_extensions) + ')'
 
 
 class BlameCounter(object):
@@ -85,5 +90,26 @@ class BlameCounter(object):
 
 
 if __name__ == '__main__':
-	import ipdb; ipdb.set_trace()
-	BlameCounter().count_blame_lines_in_chunks(25)
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--search-re', dest='search_re')
+	parser.add_argument('-x', action='append', dest='file_extensions')
+	parser.add_argument('--chunk-size', dest='chunk_size', type=int)
+
+	namespace = parser.parse_args()
+
+	blame_counter_build_kwargs = {}
+	if namespace.file_extensions:
+		blame_counter_build_kwargs['filename_re'] = build_file_extension_re(
+			namespace.file_extensions
+		)
+	if namespace.search_re:
+		blame_counter_build_kwargs['search_re'] = namespace.search_re
+
+	blame_counter = BlameCounter(**blame_counter_build_kwargs)
+
+	if namespace.chunk_size:
+		blame_counter.count_blame_lines_in_chunks(namespace.chunk_size)
+	else:
+		blame_counter.count_blame_lines()
+
+	blame_counter.print_results()
