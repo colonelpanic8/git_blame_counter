@@ -34,14 +34,18 @@ class BlameCounter(object):
 		filename_re='.*\.(?:py|tmpl)',
 		directory_ignore_re=None,
 		chunk_size=None,
-		committer=None
+		committers=None
 	):
 		self.path_matcher = re.compile(search_re)
 		self.filename_matcher = re.compile(filename_re)
 		self.directory_ignore_matcher = re.compile(directory_ignore_re) \
 			if directory_ignore_re else None
 		self.chunk_size = chunk_size
-		self.committer = committer
+		self.committers = committers
+		if self.committers:
+			committers_re = '|'.join(self.committers)
+			self.committer_checker = re.compile(committers_re)
+			self.committer_matcher = re.compile('\((%s)\s*[0-9]{4}' % committers_re)
 		self.blame_line_count_map = {}
 
 	def get_matching_files(self):
@@ -89,7 +93,7 @@ class BlameCounter(object):
 
 	def _count_blame_lines(self, blame_outputs):
 		for _, blame_output in blame_outputs:
-			if self.committer and not self.committer in blame_output:
+			if self.committer_checker is not None and not self.committer_checker(blame_output):
 				continue
 			for line in blame_output.split('\n'):
 				match = self.commiter_matcher.search(line)
@@ -99,21 +103,19 @@ class BlameCounter(object):
 						committer
 					] = self.blame_line_count_map.setdefault(committer, 0) + 1
 
-	def files_touched_by_comitter(self):
-		blame_count_by_file = {}
-		committer_matcher = re.compile('\((%s)\s*[0-9]{4}' % self.committer)
+	def get_blame_lines_in_files_by_comitters(self):
+		blame_count_in_files_by_committer = dict((committer, {}) for committer in self.committers)
 		for filename, blame_output in self.git_blame_files(
 			self.get_matching_files()
 		):
-			if self.committer in blame_output:
-				count = 0
+			if self.committer_checker.search(blame_output):
 				for line in blame_output.split('\n'):
-					match = committer_matcher.search(line)
+					match = self.committer_matcher.search(line)
 					if match:
-						count +=1
-				blame_count_by_file[filename] = count
-				print filename, count
-		return blame_count_by_file
+						blame_count_in_files_by_committer[match.group(1)][filename] = \
+							blame_count_in_files_by_committer[match.group(1)].setdefault(filename, 0) + 1
+				filename
+		return blame_count_in_files_by_committer
 
 	def print_results(self, max_committers=None, min_blame_lines=None):
 		print self.DIVIDER
@@ -152,15 +154,23 @@ if __name__ == '__main__':
 	)
 	parser.add_option(
 		'--committer',
-		dest='committer',
+		dest='committers',
+		action='append',
 		help=('Count blame lines only in files where COMMITTER appears. '
-			  'Overrides --chunk-size.')
+			  'Multiple committers may be specified')
+	)
+	parser.add_option(
+		'--committer-lines',
+		dest='committer_lines',
+		action='store_true',
+		default=False,
+		help=('Count blame lines for committer by file.')
 	)
 
 	(namespace, _) = parser.parse_args()
 
 	blame_counter_build_kwargs = {
-		'committer': namespace.committer,
+		'committers': namespace.committers,
 		'chunk_size': namespace.chunk_size
 	}
 	if namespace.file_extensions:
@@ -171,5 +181,11 @@ if __name__ == '__main__':
 		blame_counter_build_kwargs['search_re'] = namespace.search_re
 
 	blame_counter = BlameCounter(**blame_counter_build_kwargs)
-	blame_counter.count_blame_lines()
-	blame_counter.print_results()
+	if namespace.committer_lines:
+		assert blame_counter.committers
+		files = blame_counter.get_blame_lines_in_files_by_comitters()
+		print files
+		import ipdb; ipdb.set_trace()
+	else:
+		blame_counter.count_blame_lines()
+		blame_counter.print_results()
