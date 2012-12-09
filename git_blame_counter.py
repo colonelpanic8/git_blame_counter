@@ -46,6 +46,8 @@ class BlameCounter(object):
 			committers_re = '|'.join(self.committers)
 			self.committer_checker = re.compile(committers_re)
 			self.committer_matcher = re.compile('\((%s)\s*[0-9]{4}' % committers_re)
+		else:
+			self.committer_checker = None
 		self.blame_line_count_map = {}
 
 	def get_matching_files(self):
@@ -93,7 +95,9 @@ class BlameCounter(object):
 
 	def _count_blame_lines(self, blame_outputs):
 		for _, blame_output in blame_outputs:
-			if self.committer_checker is not None and not self.committer_checker(blame_output):
+			if self.committer_checker is not None and not self.committer_checker.search(
+					blame_output
+			):
 				continue
 			for line in blame_output.split('\n'):
 				match = self.commiter_matcher.search(line)
@@ -184,7 +188,6 @@ if __name__ == '__main__':
 	if namespace.committer_lines:
 		assert blame_counter.committers
 		files = blame_counter.get_blame_lines_in_files_by_comitters()
-		print files
 		import ipdb; ipdb.set_trace()
 	else:
 		blame_counter.count_blame_lines()
