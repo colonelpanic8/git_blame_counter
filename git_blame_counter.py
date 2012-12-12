@@ -30,13 +30,13 @@ class BlameCounter(object):
 
 	def __init__(
 		self,
-		search_re='',
+		search_expressions=(),
 		filename_re='.*\.(?:py|tmpl)',
 		directory_ignore_re=None,
 		chunk_size=None,
 		committers=None
 	):
-		self.path_matcher = re.compile(search_re)
+		self.path_matchers = [re.compile(search_expression) for search_expression in search_expressions]
 		self.filename_matcher = re.compile(filename_re)
 		self.directory_ignore_matcher = re.compile(directory_ignore_re) \
 			if directory_ignore_re else None
@@ -50,22 +50,21 @@ class BlameCounter(object):
 			self.committer_checker = None
 		self.blame_line_count_map = {}
 
+	def match_path_and_filename(self, path, filename):
+		filepath = os.path.join(path, filename)
+		return all(
+			bool(path_matcher.search(filepath)) for path_matcher in self.path_matchers
+		) and bool(self.filename_matcher.search(filename))
+
 	def get_matching_files(self):
 		for directory_path, directory_names, filenames in os.walk('.'):
 			if self.directory_ignore_matcher:
 				for directory_name in directory_names:
 					if self.directory_ignore_matcher.search(directory_name):
 						del directory_names[directory_names.index(directory_name)]
-			if self.path_matcher.search(directory_path):
-				for filename in filenames:
-					if self.filename_matcher.match(filename):
-						yield os.path.join(directory_path, filename)
-			else:
-				for filename in filenames:
-					file_path = os.path.join(directory_path, filename)
-					if self.path_matcher.search(file_path) and \
-						self.filename_matcher.match(filename):
-						yield file_path
+			for filename in filenames:
+				if self.match_path_and_filename(directory_path, filename):
+					yield os.path.join(directory_path, filename)
 
 	def git_blame_files(self, filenames):
 		for filename in filenames:
@@ -140,7 +139,8 @@ if __name__ == '__main__':
 	parser = optparse.OptionParser()
 	parser.add_option(
 		'--search-re',
-		dest='search_re',
+		action='append',
+		dest='search_expressions',
 		help='A regular expression to use when inspecting filepaths'
 	)
 	parser.add_option(
@@ -175,14 +175,13 @@ if __name__ == '__main__':
 
 	blame_counter_build_kwargs = {
 		'committers': namespace.committers,
-		'chunk_size': namespace.chunk_size
+		'chunk_size': namespace.chunk_size,
+		'search_expressions': namespace.search_expressions
 	}
 	if namespace.file_extensions:
 		blame_counter_build_kwargs['filename_re'] = build_file_extension_re(
 			namespace.file_extensions
 		)
-	if namespace.search_re:
-		blame_counter_build_kwargs['search_re'] = namespace.search_re
 
 	blame_counter = BlameCounter(**blame_counter_build_kwargs)
 	if namespace.committer_lines:
