@@ -31,15 +31,21 @@ class BlameCounter(object):
 	def __init__(
 		self,
 		search_expressions=(),
+		ignore_expressions=(),
 		filename_re='.*\.(?:py|tmpl)',
-		directory_ignore_re=None,
 		chunk_size=None,
 		committers=None
 	):
-		self.path_matchers = [re.compile(search_expression) for search_expression in search_expressions]
+		print search_expressions
+		self.path_matchers = [
+			re.compile(search_expression)
+			for search_expression in search_expressions
+		]
+		self.ignore_matchers = [
+			re.compile(ignore_expression)
+			for ignore_expression in ignore_expressions
+		]
 		self.filename_matcher = re.compile(filename_re)
-		self.directory_ignore_matcher = re.compile(directory_ignore_re) \
-			if directory_ignore_re else None
 		self.chunk_size = chunk_size
 		self.committers = committers
 		if self.committers:
@@ -58,10 +64,12 @@ class BlameCounter(object):
 
 	def get_matching_files(self):
 		for directory_path, directory_names, filenames in os.walk('.'):
-			if self.directory_ignore_matcher:
-				for directory_name in directory_names:
-					if self.directory_ignore_matcher.search(directory_name):
-						del directory_names[directory_names.index(directory_name)]
+			for directory_name in directory_names:
+				if any(
+						ignore_matcher.search(directory_name)
+						for ignore_matcher in self.ignore_matchers
+				):
+					del directory_names[directory_names.index(directory_name)]
 			for filename in filenames:
 				if self.match_path_and_filename(directory_path, filename):
 					yield os.path.join(directory_path, filename)
@@ -144,6 +152,12 @@ if __name__ == '__main__':
 		help='A regular expression to use when inspecting filepaths'
 	)
 	parser.add_option(
+		'--ignore-re',
+		action='append',
+		dest='ignore_expressions',
+		help='Ignore directories matching this re.'
+	)
+	parser.add_option(
 		'-x',
 		action='append',
 		dest='file_extensions',
@@ -176,7 +190,8 @@ if __name__ == '__main__':
 	blame_counter_build_kwargs = {
 		'committers': namespace.committers,
 		'chunk_size': namespace.chunk_size,
-		'search_expressions': namespace.search_expressions
+		'search_expressions': namespace.search_expressions,
+		'ignore_expressions': namespace.ignore_expressions
 	}
 	if namespace.file_extensions:
 		blame_counter_build_kwargs['filename_re'] = build_file_extension_re(
