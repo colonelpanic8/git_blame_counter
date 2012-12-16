@@ -36,7 +36,6 @@ class BlameCounter(object):
 		chunk_size=None,
 		committers=None
 	):
-		print search_expressions
 		self.path_matchers = [
 			re.compile(search_expression)
 			for search_expression in search_expressions
@@ -154,6 +153,7 @@ if __name__ == '__main__':
 	parser.add_option(
 		'--ignore-re',
 		action='append',
+		default=[],
 		dest='ignore_expressions',
 		help='Ignore directories matching this re.'
 	)
