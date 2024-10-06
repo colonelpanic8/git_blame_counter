@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/bin/env python
 import optparse
 import os
 import re
@@ -10,7 +10,7 @@ def segment(iterable, segment_length):
         yield iterable
         raise StopIteration
     def yield_length():
-        for _ in xrange(segment_length):
+        for _ in range(segment_length):
             yield iterable.next()
     while True:
         segment = list(yield_length())
@@ -112,7 +112,7 @@ class BlameCounter(object):
         return blame_count_in_files_by_committer
 
     def print_results(self, max_committers=None, min_blame_lines=None):
-        print self.DIVIDER
+        print(self.DIVIDER)
         for (rank, (committer, blame_lines)) in enumerate(
             sorted(
                 self.blame_line_count_map.iteritems(),
@@ -123,7 +123,7 @@ class BlameCounter(object):
             if rank is not None and rank == max_committers:
                 return
             if min_blame_lines is None or blame_lines > min_blame_lines:
-                print str(rank + 1), committer, ': ', blame_lines
+                print(str(rank + 1), committer, ': ', blame_lines)
 
 
 if __name__ == '__main__':
@@ -132,6 +132,7 @@ if __name__ == '__main__':
         '--search-re',
         action='append',
         dest='search_expressions',
+        default=[],
         help='A regular expression to use when inspecting filepaths'
     )
     parser.add_option(
@@ -194,3 +195,4 @@ if __name__ == '__main__':
     else:
         blame_counter.count_blame_lines()
         blame_counter.print_results()
+ 
